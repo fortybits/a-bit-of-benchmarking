@@ -4,6 +4,7 @@ import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -11,34 +12,38 @@ import java.util.stream.IntStream;
  * feature introduced with https://bugs.openjdk.java.net/browse/JDK-8180352
  */
 @BenchmarkMode(Mode.All)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(1)
 @State(Scope.Thread)
 @Warmup(iterations = 20, time = 1, batchSize = 10000)
 @Measurement(iterations = 20, time = 1, batchSize = 10000)
 public class CollectorsVsStreamToList {
 
-    static final Set<Integer> data = IntStream.range(0, 1000)
-            .boxed()
-            .collect(Collectors.toSet());
-
-    @Benchmark
-    public List<Integer> viaCollectors() {
-        return data.stream().collect(Collectors.toList());
+    @State(Scope.Benchmark)
+    public static class MyState {
+        static final Set<Integer> data = IntStream.range(0, 1000)
+                .boxed()
+                .collect(Collectors.toSet());
     }
 
     @Benchmark
-    public List<Integer> viaStream() {
-        return data.stream().toList();
+    public List<Integer> viaCollectors(MyState myState) {
+        return myState.data.stream().collect(Collectors.toList());
     }
 
     @Benchmark
-    public List<Integer> viaCollectorsParallel() {
-        return data.stream().parallel().collect(Collectors.toList());
+    public List<Integer> viaStream(MyState myState) {
+        return myState.data.stream().toList();
     }
 
     @Benchmark
-    public List<Integer> viaStreamParallel() {
-        return data.stream().parallel().toList();
+    public List<Integer> viaCollectorsParallel(MyState myState) {
+        return myState.data.stream().parallel().collect(Collectors.toList());
+    }
+
+    @Benchmark
+    public List<Integer> viaStreamParallel(MyState myState) {
+        return myState.data.stream().parallel().toList();
     }
 }
 /*
